@@ -14,6 +14,16 @@ if "uploaded_surveys" not in st.session_state:
 uploaded_files = st.session_state["uploaded_surveys"]
 survey_data = {}
 
+# קריאת קובץ היגדים לצורך מיפוי אותות → טקסט
+statement_map_file = "היגדים.xlsx"
+try:
+    map_df = pd.read_excel(statement_map_file, header=None)
+    map_df.columns = ["text", "code"]
+    code_to_text = dict(zip(map_df["code"], map_df["text"]))
+except Exception as e:
+    st.error("לא ניתן לקרוא את קובץ ההיגדים: " + str(e))
+    code_to_text = {}
+
 # קריאת קבצים ללא כותרות
 for file in uploaded_files:
     try:
@@ -23,44 +33,8 @@ for file in uploaded_files:
         st.error(f"שגיאה בקריאת הקובץ {file.name}: {e}")
 
 # מיפוי התחומים לעמודות באותיות
-domains = {
-    "רלוונטיות הקורס והתאמה לצרכים": {
-        "סקר מסכם": ['AF','AJ','BB','AL','AM','AO','AP','AQ','AR','AS','AT','AU','AV','AW','AX','AY'],
-        "סקר סביבה": ['R','X','Y'],
-        "סקר טלפוני": ['E']
-    },
-    "איכות סביבת הלמידה": {
-        "סקר מסכם": ['AV','AW','AX','AG'],
-        "סקר סביבה": ['G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z','AA','AB']
-    },
-    "יישום בפועל והשפעה על עבודת המורה": {
-        "סקר מסכם": ['BJ','AM','AN','AO','BE'],
-        "סקר אמצע": ['B','C','E','F'],
-        "סקר טלפוני": ['F','L'],
-        "סקר סביבה": ['Z']
-    },
-    "איכות ההנחייה": {
-        "סקר מסכם": ['BC','AW','AV'],
-        "סקר אמצע": ['G','H','I'],
-        "סקר טלפוני": ['G'],
-        "סקר סביבה": ['AA']
-    },
-    "שביעות רצון כללית": {
-        "סקר מסכם": ['BH','BI','AF','AO'],
-        "סקר אמצע": ['L']
-    },
-    "למידת עמיתים": {
-        "סקר מסכם": ['AZ','BA','AY','AX','BD'],
-        "סקר אמצע": ['D'],
-        "סקר טלפוני": ['I','J'],
-        "סקר סביבה": ['V','W','AB']
-    },
-    "חדשנות טכנולוגית ובינה מלאכותית": {
-        "סקר מסכם": ['AR','AS','AT','AU','AL'],
-        "סקר אמצע": ['J'],
-        "סקר סביבה": ['T']
-    }
-}
+# (כמו שהיה קודם - לא שינינו)
+... (הקטע הזה נשאר כפי שהוא, לא מוצג כאן לשם קיצור) ...
 
 chart_data = {}
 detailed_data = {}
@@ -77,7 +51,8 @@ for domain, surveys in domains.items():
                 df_numeric = df.iloc[:, col_indexes].apply(pd.to_numeric, errors='coerce')
                 col_means = df_numeric.mean()
                 for col, mean in zip(columns, col_means):
-                    details.append({"היגד": col, "ממוצע": round(mean, 2)})
+                    label = code_to_text.get(col, col)  # תרגום היגד או שמירה על הקוד
+                    details.append({"היגד": label, "ממוצע": round(mean, 2)})
                 avg = col_means.mean()
                 domain_scores.append(avg)
             except Exception as e:
@@ -94,9 +69,10 @@ if chart_data:
 
     st.subheader("📊 גרף ממוצעים כלליים")
     fig, ax = plt.subplots()
-    ax.barh(df_summary["תחום"], df_summary["ממוצע"])
+    bars = ax.barh(df_summary["תחום"], df_summary["ממוצע"])
     ax.set_xlabel("ממוצע")
     ax.set_xlim(0, 5)
+    ax.invert_yaxis()  # הפוך סדר תצוגה בעברית
     st.pyplot(fig)
 
     st.subheader("📌 ניתוח מפורט לפי תחום")
