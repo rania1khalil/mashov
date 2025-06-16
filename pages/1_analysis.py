@@ -1,30 +1,28 @@
 import streamlit as st
 import pandas as pd
 
-st.set_page_config(page_title="📊 ניתוח לפי תחומים", layout="wide")
-st.title("📊 ניתוח תחומי הערכה מהקבצים שהועלו")
+st.set_page_config(page_title="📊 ניתוח תחומים", layout="wide")
+st.title("📊 ניתוח ממוצעים לפי תחומים")
 
-if "uploaded_surveys" not in st.session_state:
-    st.warning("🟡 אנא חזרי לדף הבית והעלי קבצים לפני שמתחילים בניתוח.")
+if "uploaded_surveys" not in st.session_state or not st.session_state["uploaded_surveys"]:
+    st.warning("🟡 אנא חזרי לעמוד הבית והעלי לפחות קובץ סקר אחד.")
     st.stop()
 
 uploaded_files = st.session_state["uploaded_surveys"]
-
-# קריאת כל הקבצים לקובץ אחד לפי שם
 survey_data = {}
-for f in uploaded_files:
-    try:
-        df = pd.read_excel(f)
-        survey_data[f.name] = df
-    except Exception as e:
-        st.error(f"שגיאה בקריאת הקובץ {f.name}: {e}")
 
-# מיפוי עמודות לפי תחומים
+for file in uploaded_files:
+    try:
+        df = pd.read_excel(file)
+        survey_data[file.name] = df
+    except Exception as e:
+        st.error(f"שגיאה בקריאת הקובץ {file.name}: {e}")
+
 domains = {
     "רלוונטיות הקורס והתאמה לצרכים": {
         "סקר מסכם": ['AF','AJ','BB','AL','AM','AO','AP','AQ','AR','AS','AT','AU','AV','AW','AX','AY'],
         "סקר סביבה": ['R','X','Y'],
-        "סקר טלפוני": ['E']
+        "סקר טלפוני": ['e']
     },
     "איכות סביבת הלמידה": {
         "סקר מסכם": ['AV','AW','AX','AG'],
@@ -63,21 +61,23 @@ results = {}
 
 for domain, surveys in domains.items():
     domain_scores = []
-    for survey_name, cols in surveys.items():
-        match_file = next((key for key in survey_data if survey_name in key), None)
-        if match_file:
-            df = survey_data[match_file]
-            valid_cols = [col for col in cols if col in df.columns]
+    for survey_type, columns in surveys.items():
+        file = next((f for f in survey_data if survey_type in f), None)
+        if file:
+            df = survey_data[file]
+            valid_cols = [col for col in columns if col in df.columns]
             if valid_cols:
-                df_numeric = df[valid_cols].apply(pd.to_numeric, errors='coerce')
-                avg = df_numeric.mean().mean()
-                domain_scores.append(avg)
+                numeric = df[valid_cols].apply(pd.to_numeric, errors='coerce')
+                mean_score = numeric.mean().mean()
+                domain_scores.append(mean_score)
     if domain_scores:
         results[domain] = round(sum(domain_scores) / len(domain_scores), 2)
 
-# הצגת טבלה
 if results:
-    result_df = pd.DataFrame(list(results.items()), columns=["תחום", "ממוצע"])
-    st.dataframe(result_df, use_container_width=True)
+    st.subheader("📋 טבלת ממוצעים")
+    st.dataframe(pd.DataFrame(results.items(), columns=["תחום", "ממוצע"]), use_container_width=True)
+
+    st.subheader("📊 גרף ממוצעים")
+    st.bar_chart(pd.DataFrame(results, index=["ממוצע"]).T)
 else:
-    st.info("לא נמצאו נתונים מתאימים לניתוח.")
+    st.info("🔍 לא נמצאו נתונים להצגה.")
