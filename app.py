@@ -1,5 +1,4 @@
 import streamlit as st
-import streamlit as st
 
 # הגדרות עמוד
 st.set_page_config(page_title="📊 מערכת הערכה", layout="wide")
